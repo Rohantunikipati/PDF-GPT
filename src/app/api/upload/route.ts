@@ -6,47 +6,53 @@ import { rateLimitUser } from '@/lib/redis'
 
 export async function POST(request: NextRequest) {
   try {
-    // 🔐 Auth
+    // 🔐 Clerk Auth
     const { userId } = auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 🚦 Rate limiting (5 uploads / 5 minutes)
+    // 🚦 Rate limiting: 5 uploads / 5 minutes
     const allowed = await rateLimitUser(userId, 5, 300)
     if (!allowed) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
 
-    // 📂 Extract file
+    // 📂 Extract file from formData
     const formData = await request.formData()
     const file = formData.get('pdf') as File
-    if (!file || file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'Invalid PDF file' }, { status: 400 })
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+    if (file.type !== 'application/pdf') {
+      return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 })
     }
 
-    // 🧹 Clean filename (avoid weird characters)
-    const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '')
+    // 🧹 Clean filename (avoid spaces/special chars)
+    const safeName = file.name
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_.-]/g, '')
 
-    // 📦 Convert to Buffer for upload
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    // 📦 Convert File → Buffer
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    // ☁️ Upload to Vercel Blob (public) 
+    // ☁️ Upload to Vercel Blob
     // @ts-ignore
     const blob = await put(safeName, buffer, {
       access: 'public',
       addRandomSuffix: true,
+      token: process.env.BLOB_READ_WRITE_TOKEN, // ✅ Required for local
     })
 
-    // ⏳ Queue background processing job
+    // ⏳ Queue background processing
     const jobId = await publishPDFProcessingJob(userId, safeName, blob.url)
 
     return NextResponse.json({
       success: true,
       fileName: safeName,
-      blobUrl: blob.url,   // 🔗 public URL
-      path: blob.pathname, // useful if later making private blobs
+      blobUrl: blob.url,   // Public link
+      path: blob.pathname, // Optional internal path
       jobId,
     })
   } catch (error: any) {
