@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useChat } from 'ai/react'
 
 export default function ChatBox() {

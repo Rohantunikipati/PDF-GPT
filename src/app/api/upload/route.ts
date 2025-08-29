@@ -34,12 +34,12 @@ export async function POST(request: NextRequest) {
       .replace(/\s+/g, '_')
       .replace(/[^a-zA-Z0-9_.-]/g, '')
 
-    // 📦 Convert File → ArrayBuffer → Blob
+    // 📦 Convert File → ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
-    const blobFile = new Blob([arrayBuffer], { type: 'application/pdf' })
 
     // ☁️ Upload to Vercel Blob
-    const blob = await put(safeName, blobFile, {
+    // 
+    const blob = await put(safeName, arrayBuffer, {
       access: 'public',
       addRandomSuffix: true,
       token: process.env.BLOB_READ_WRITE_TOKEN, // ✅ Required for local

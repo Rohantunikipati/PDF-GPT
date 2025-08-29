@@ -46,8 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare context from search results
     const context = searchResults
-      //@ts-ignore
-      .map(result => result.metadata.content)
+      .map(result => result.metadata?.content ?? '')
       .join('\n\n')
 
     // Generate streaming response
