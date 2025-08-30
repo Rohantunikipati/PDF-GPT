@@ -36,8 +36,8 @@ export default function ChatBox() {
 
       const aiMessage: { role: 'user' | 'ai'; content: string; id: string } = { role: 'ai', content: data.response || 'No response', id: crypto.randomUUID() }
       setMessages(prev => [...prev, aiMessage])
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong')
+    } catch (err: Error | unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setIsLoading(false)
       setInput('')
