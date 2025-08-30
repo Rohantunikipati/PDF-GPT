@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
   console.log('=== PDF Upload Started ===')
-  
+
   try {
     // Authentication
     const { userId } = auth()
@@ -30,16 +30,16 @@ export async function POST(request: NextRequest) {
     // Get form data
     const formData = await request.formData()
     const file = formData.get('pdf') as File
-    
+
     if (!file) {
       console.log('❌ No file in form data')
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    console.log('📄 File received:', { 
-      name: file.name, 
-      type: file.type, 
-      size: file.size 
+    console.log('📄 File received:', {
+      name: file.name,
+      type: file.type,
+      size: file.size
     })
 
     // Validate PDF file
@@ -58,11 +58,11 @@ export async function POST(request: NextRequest) {
     // Extract text from PDF
     console.log('📖 Extracting text from PDF...')
     const rawText = await extractTextFromPDF(buffer)
-    
+
     if (!rawText || rawText.length < 10) {
       console.log('❌ PDF contains no readable text')
-      return NextResponse.json({ 
-        error: 'PDF appears to be empty, corrupted, or contains no readable text' 
+      return NextResponse.json({
+        error: 'PDF appears to be empty, corrupted, or contains no readable text'
       }, { status: 400 })
     }
     console.log('✅ Text extracted, length:', rawText.length, 'characters')
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     console.log('🧹 Cleaning and chunking text...')
     const cleanText = cleanExtractedText(rawText)
     const chunks = chunkText(cleanText)
-    
+
     if (chunks.length === 0) {
       console.log('❌ No valid text chunks created')
       return NextResponse.json({ error: 'No valid text content found after processing' }, { status: 400 })
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       originalSize: file.size
     }
 
-    await redis.set(`file:${userId}:${fileId}`, JSON.stringify(fileMetadata), { 
+    await redis.set(`file:${userId}:${fileId}`, JSON.stringify(fileMetadata), {
       ex: 86400 * 30 // 30 days retention
     })
 
@@ -137,36 +137,36 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('💥 Upload error:', error)
-    
+
     // Detailed error handling
-    if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as any).message === 'string') {
-      const message = (error as any).message as string;
+    if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as Error).message === 'string') {
+      const message = (error as Error).message;
 
       if (message.includes('ENOENT')) {
-        return NextResponse.json({ 
-          error: 'File processing error. Please try uploading the PDF again.' 
+        return NextResponse.json({
+          error: 'File processing error. Please try uploading the PDF again.'
         }, { status: 400 })
       }
-      
+
       if (message.includes('pdf-parse') || message.includes('PDF')) {
-        return NextResponse.json({ 
-          error: 'Failed to parse PDF. The file might be corrupted, password-protected, or contain only images.' 
+        return NextResponse.json({
+          error: 'Failed to parse PDF. The file might be corrupted, password-protected, or contain only images.'
         }, { status: 400 })
       }
 
       if (message.includes('OpenAI') || message.includes('embeddings')) {
-        return NextResponse.json({ 
-          error: 'Failed to generate embeddings. Please try again.' 
+        return NextResponse.json({
+          error: 'Failed to generate embeddings. Please try again.'
         }, { status: 500 })
       }
 
-      return NextResponse.json({ 
-        error: `Processing failed: ${message}` 
+      return NextResponse.json({
+        error: `Processing failed: ${message}`
       }, { status: 500 })
     }
 
-    return NextResponse.json({ 
-      error: 'Processing failed due to an unknown error.' 
+    return NextResponse.json({
+      error: 'Processing failed due to an unknown error.'
     }, { status: 500 })
   }
 }

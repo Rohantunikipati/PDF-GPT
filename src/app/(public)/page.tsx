@@ -47,7 +47,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Easy Upload</h3>
-              <p className="text-gray-600">Simply drag and drop your PDF files or click to browse. We'll handle the rest automatically.</p>
+              <p className="text-gray-600">Simply drag and drop your PDF files or click to browse. Well handle the rest automatically.</p>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-md">
