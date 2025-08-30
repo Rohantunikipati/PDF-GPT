@@ -12,8 +12,9 @@ export interface DocumentChunk {
   chunkIndex: number
   content: string
   metadata: {
-    page?: number
+    fileId: string
     totalChunks: number
+    uploadedAt: string
   }
 }
 
@@ -24,10 +25,21 @@ export async function upsertDocumentChunks(
   const vectors = chunks.map((chunk, i) => ({
     id: chunk.id,
     vector: embeddings[i],
-    metadata: chunk
+    metadata: {
+      userId: chunk.userId,
+      fileName: chunk.fileName,
+      chunkIndex: chunk.chunkIndex,
+      content: chunk.content,
+      ...chunk.metadata
+    }
   }))
 
-  await vectorIndex.upsert(vectors)
+  // Upsert in batches to avoid rate limits
+  const batchSize = 100
+  for (let i = 0; i < vectors.length; i += batchSize) {
+    const batch = vectors.slice(i, i + batchSize)
+    await vectorIndex.upsert(batch)
+  }
 }
 
 export async function searchSimilarChunks(
@@ -43,4 +55,23 @@ export async function searchSimilarChunks(
   })
 
   return results
+}
+
+export async function deleteFileChunks(userId: string, fileId: string) {
+  // Get all chunks for this file
+  const results = await vectorIndex.query({
+    vector: new Array(1536).fill(0), // Dummy vector for search
+    topK: 1000, // Get many results
+    includeMetadata: true,
+    filter: `userId = '${userId}' AND fileId = '${fileId}'`
+  })
+
+  // Delete each chunk
+  const chunkIds = results.map(result => result.id)
+  const numericChunkIds = chunkIds.filter(id => typeof id === 'number') as number[]
+  if (numericChunkIds.length > 0) {
+    await vectorIndex.delete(numericChunkIds)
+  }
+
+  return chunkIds.length
 }

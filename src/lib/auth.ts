@@ -15,3 +15,10 @@ export async function getUserId() {
   const { userId } = auth()
   return userId
 }
+
+export function getAuthHeaders() {
+  const { userId } = auth()
+  return {
+    'x-user-id': userId || '',
+  }
+}
